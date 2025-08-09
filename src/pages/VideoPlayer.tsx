@@ -189,6 +189,7 @@ const VideoPlayer: React.FC = () => {
             <div className="relative bg-black rounded-lg overflow-hidden mb-6">
               <video
                 controls
+                autoPlay
                 className="w-full aspect-video"
                 poster={video.thumbnailUrl || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDgwMCA0NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI4MDAiIGhlaWdodD0iNDUwIiBmaWxsPSIjMDAwMDAwIi8+Cjx0ZXh0IHg9IjQwMCIgeT0iMjI1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiNGRkZGRkYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlZpZGVvIFBsYXllcjwvdGV4dD4KPC9zdmc+'}
                 preload="metadata"
@@ -250,8 +251,8 @@ const VideoPlayer: React.FC = () => {
                       >
                         <Star
                           className={`h-6 w-6 ${star <= (hoveredRating || userRating)
-                              ? 'fill-yellow-400 text-yellow-400'
-                              : 'text-gray-300'
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-gray-300'
                             }`}
                         />
                       </button>

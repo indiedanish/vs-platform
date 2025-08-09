@@ -86,7 +86,7 @@ const Signup: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -101,7 +101,10 @@ const Signup: React.FC = () => {
     });
 
     if (success) {
-      navigate('/');
+      // Check if there's a redirect path from location state
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get('redirectTo') || '/';
+      navigate(redirectTo);
     } else {
       setErrors({ general: 'Registration failed. Please try again.' });
     }

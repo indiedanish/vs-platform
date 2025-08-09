@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { useAuth } from '../hooks/useAuth';
+import { useRoutePermissions } from '../hooks/useRoutePermissions';
 
 interface NavbarProps {
   onSearch?: (query: string) => void;
@@ -19,6 +20,7 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ onSearch }) => {
   const { user, logout, isAuthenticated } = useAuth();
+  const { canAccessRoute } = useRoutePermissions();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -45,8 +47,8 @@ const Navbar: React.FC<NavbarProps> = ({ onSearch }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="flex items-center space-x-2 text-xl font-bold text-primary"
             onClick={closeMobileMenu}
           >
@@ -81,7 +83,7 @@ const Navbar: React.FC<NavbarProps> = ({ onSearch }) => {
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated ? (
               <>
-                {user?.role === 'creator' && (
+                {canAccessRoute('/upload') && (
                   <Button asChild variant="outline" size="sm">
                     <Link to="/upload" className="flex items-center space-x-2">
                       <Upload className="h-4 w-4" />
@@ -89,7 +91,7 @@ const Navbar: React.FC<NavbarProps> = ({ onSearch }) => {
                     </Link>
                   </Button>
                 )}
-                
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -191,7 +193,7 @@ const Navbar: React.FC<NavbarProps> = ({ onSearch }) => {
                     <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
                   </div>
                 </div>
-                
+
                 {user?.role === 'creator' && (
                   <Button asChild variant="outline" className="w-full justify-start" onClick={closeMobileMenu}>
                     <Link to="/upload" className="flex items-center space-x-2">
@@ -200,7 +202,7 @@ const Navbar: React.FC<NavbarProps> = ({ onSearch }) => {
                     </Link>
                   </Button>
                 )}
-                
+
                 <Button
                   variant="ghost"
                   className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"

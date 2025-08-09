@@ -47,7 +47,10 @@ const Login: React.FC = () => {
 
     const success = await login(formData.email, formData.password);
     if (success) {
-      navigate('/');
+      // Check if there's a redirect path from location state
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get('redirectTo') || '/';
+      navigate(redirectTo);
     } else {
       setError('Invalid email or password. Try using one of the demo accounts.');
     }
@@ -57,7 +60,10 @@ const Login: React.FC = () => {
     setFormData({ email, password, role: 'consumer' });
     const success = await login(email, password);
     if (success) {
-      navigate('/');
+      // Check if there's a redirect path from location state
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get('redirectTo') || '/';
+      navigate(redirectTo);
     }
   };
 
