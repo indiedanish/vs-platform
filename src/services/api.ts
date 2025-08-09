@@ -1,5 +1,5 @@
 // API Configuration and Base Service
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = "http://localhost:3000/api";
 
 export interface ApiResponse<T> {
   data?: T;
@@ -22,16 +22,16 @@ export interface PaginationResponse {
 // Token management
 export const tokenManager = {
   getToken: (): string | null => {
-    return localStorage.getItem('authToken');
+    return localStorage.getItem("authToken");
   },
-  
+
   setToken: (token: string): void => {
-    localStorage.setItem('authToken', token);
+    localStorage.setItem("authToken", token);
   },
-  
+
   removeToken: (): void => {
-    localStorage.removeItem('authToken');
-  }
+    localStorage.removeItem("authToken");
+  },
 };
 
 // Base API client with error handling
@@ -51,7 +51,10 @@ class ApiClient {
 
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache, no-store, must-revalidate", // Add no-cache headers
+        Pragma: "no-cache",
+        Expires: "0",
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
@@ -60,10 +63,12 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(
+          errorData.error || `HTTP ${response.status}: ${response.statusText}`
+        );
       }
 
       return await response.json();
@@ -74,29 +79,31 @@ class ApiClient {
   }
 
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
-    const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
+    const queryString = params
+      ? `?${new URLSearchParams(params).toString()}`
+      : "";
     return this.request<T>(`${endpoint}${queryString}`, {
-      method: 'GET',
+      method: "GET",
     });
   }
 
   async post<T>(endpoint: string, data?: any): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async put<T>(endpoint: string, data?: any): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -105,7 +112,7 @@ class ApiClient {
     const token = tokenManager.getToken();
 
     const config: RequestInit = {
-      method: 'POST',
+      method: "POST",
       headers: {
         ...(token && { Authorization: `Bearer ${token}` }),
       },
@@ -114,10 +121,12 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(
+          errorData.error || `HTTP ${response.status}: ${response.statusText}`
+        );
       }
 
       return await response.json();

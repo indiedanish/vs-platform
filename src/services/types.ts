@@ -4,7 +4,7 @@ export interface User {
   id: string;
   email: string;
   username: string;
-  role: 'CREATOR' | 'CONSUMER';
+  role: "CREATOR" | "CONSUMER";
   firstName: string;
   lastName: string;
   bio?: string;
@@ -18,7 +18,7 @@ export interface SignupRequest {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'CREATOR' | 'CONSUMER';
+  role: "CREATOR" | "CONSUMER";
 }
 
 export interface LoginRequest {
@@ -57,7 +57,7 @@ export interface Video {
     id: string;
     email?: string;
     username: string;
-    role?: 'CREATOR' | 'CONSUMER';
+    role?: "CREATOR" | "CONSUMER";
     firstName?: string;
     lastName?: string;
     avatar?: string | null;
@@ -84,8 +84,8 @@ export interface VideosResponse {
 export interface VideoFilters {
   page?: number;
   limit?: number;
-  sortBy?: 'createdAt' | 'title' | 'views' | 'averageRating';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "createdAt" | "title" | "views" | "averageRating";
+  sortOrder?: "asc" | "desc";
   search?: string;
   creatorId?: string;
 }

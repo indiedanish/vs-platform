@@ -145,19 +145,6 @@ const Login: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role">Account Type</Label>
-                <Select value={formData.role} onValueChange={handleRoleChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select account type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="consumer">Consumer (Watch videos)</SelectItem>
-                    <SelectItem value="creator">Creator (Upload & watch videos)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <Button
                 type="submit"
                 className="w-full"
@@ -173,49 +160,6 @@ const Login: React.FC = () => {
                 )}
               </Button>
             </form>
-
-            {/* Demo Accounts */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-600 mb-3">Try demo accounts:</p>
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start text-left"
-                  onClick={() => handleDemoLogin('john@example.com')}
-                  disabled={isLoading}
-                >
-                  <div className="flex flex-col items-start">
-                    <span className="font-medium">John Doe (Consumer)</span>
-                    <span className="text-xs text-gray-500">john@example.com</span>
-                  </div>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start text-left"
-                  onClick={() => handleDemoLogin('jane@example.com')}
-                  disabled={isLoading}
-                >
-                  <div className="flex flex-col items-start">
-                    <span className="font-medium">Jane Smith (Creator)</span>
-                    <span className="text-xs text-gray-500">jane@example.com</span>
-                  </div>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start text-left"
-                  onClick={() => handleDemoLogin('mike@example.com')}
-                  disabled={isLoading}
-                >
-                  <div className="flex flex-col items-start">
-                    <span className="font-medium">Mike Johnson (Creator)</span>
-                    <span className="text-xs text-gray-500">mike@example.com</span>
-                  </div>
-                </Button>
-              </div>
-            </div>
           </CardContent>
         </Card>
 

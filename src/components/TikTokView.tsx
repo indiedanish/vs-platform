@@ -1,25 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Pause, Heart, MessageCircle, Share, Star, Eye, MoreHorizontal, ArrowLeft, Grid3X3, Loader2 } from 'lucide-react';
+import { Play, Pause, Heart, MessageCircle, Share, Star, Eye, MoreHorizontal, ArrowLeft, Grid3X3, Loader2, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Video } from '../services/types';
+import { Video, Comment } from '../services/types';
+import { commentService } from '../services';
 
 interface TikTokViewProps {
   videos: Video[];
   onBackToGrid?: () => void;
 }
-
-interface CachedVideo {
-  blob: Blob;
-  url: string;
-  timestamp: number;
-  size: number;
-}
-
-const CACHE_NAME = 'video-cache-v1';
-const CACHE_SIZE_LIMIT = 500 * 1024 * 1024; // 500MB cache limit
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -27,17 +17,16 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
   const [liked, setLiked] = useState<{ [key: string]: boolean }>({});
   const [loadingVideos, setLoadingVideos] = useState<{ [key: string]: boolean }>({});
   const [loadedVideos, setLoadedVideos] = useState<{ [key: string]: boolean }>({});
-  const [cachedVideos, setCachedVideos] = useState<{ [key: string]: CachedVideo }>({});
+  const [showComments, setShowComments] = useState(false);
+  const [currentVideoForComments, setCurrentVideoForComments] = useState<Video | null>(null);
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
   const containerRef = useRef<HTMLDivElement>(null);
-  const cacheRef = useRef<{ [key: string]: CachedVideo }>({});
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   const currentVideo = videos[currentVideoIndex] || videos[0];
-
-  // Initialize cache on component mount
-  useEffect(() => {
-    initializeCache();
-  }, []);
 
   // Initialize loading state for first video
   useEffect(() => {
@@ -62,51 +51,12 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
     }
   }, [videos]);
 
-  // Cache management functions
-  const initializeCache = useCallback(async () => {
-    try {
-      // Check if IndexedDB is available
-      if ('indexedDB' in window) {
-        const request = indexedDB.open(CACHE_NAME, 1);
-
-        request.onupgradeneeded = (event) => {
-          const db = (event.target as IDBOpenDBRequest).result;
-          if (!db.objectStoreNames.contains('videos')) {
-            const store = db.createObjectStore('videos', { keyPath: 'id' });
-            store.createIndex('timestamp', 'timestamp', { unique: false });
-          }
-        };
-
-        request.onsuccess = (event) => {
-          const db = (event.target as IDBOpenDBRequest).result;
-          const transaction = db.transaction(['videos'], 'readonly');
-          const store = transaction.objectStore('videos');
-          const getAllRequest = store.getAll();
-
-          getAllRequest.onsuccess = () => {
-            const cachedData: { [key: string]: CachedVideo } = {};
-            getAllRequest.result.forEach((item) => {
-              if (Date.now() - item.timestamp < CACHE_DURATION) {
-                cachedData[item.id] = item;
-              }
-            });
-            cacheRef.current = cachedData;
-            setCachedVideos(cachedData);
-          };
-        };
-      }
-    } catch (error) {
-      console.warn('Failed to initialize cache:', error);
-    }
-  }, []);
-
   const preloadVideo = useCallback(async (videoId: string) => {
     const video = videos.find(v => (v.id || `video-${videos.indexOf(v)}`) === videoId);
     if (!video?.videoUrl) return;
 
-    // Check if already cached
-    if (cacheRef.current[videoId]) {
-      setLoadedVideos(prev => ({ ...prev, [videoId]: true }));
+    // Check if already loaded
+    if (loadedVideos[videoId]) {
       setLoadingVideos(prev => ({ ...prev, [videoId]: false }));
       return;
     }
@@ -117,113 +67,25 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
 
       setLoadingVideos(prev => ({ ...prev, [videoId]: true }));
 
-      // Fetch video with caching
-      const response = await fetch(video.videoUrl, {
-        cache: 'force-cache',
-        headers: {
-          'Cache-Control': 'max-age=86400', // 24 hours
-        }
-      });
+      // Simple preload by creating a video element
+      const videoElement = document.createElement('video');
+      videoElement.src = video.videoUrl;
+      videoElement.preload = 'metadata';
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch video: ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-
-      // Store in cache
-      const cachedVideo: CachedVideo = {
-        blob,
-        url,
-        timestamp: Date.now(),
-        size: blob.size
+      videoElement.onloadedmetadata = () => {
+        setLoadedVideos(prev => ({ ...prev, [videoId]: true }));
+        setLoadingVideos(prev => ({ ...prev, [videoId]: false }));
       };
 
-      cacheRef.current[videoId] = cachedVideo;
-      setCachedVideos(prev => ({ ...prev, [videoId]: cachedVideo }));
-
-      // Store in IndexedDB if available
-      if ('indexedDB' in window) {
-        try {
-          const db = await new Promise<IDBDatabase>((resolve, reject) => {
-            const request = indexedDB.open(CACHE_NAME, 1);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
-          });
-
-          const transaction = db.transaction(['videos'], 'readwrite');
-          const store = transaction.objectStore('videos');
-          store.put({ id: videoId, ...cachedVideo });
-
-          // Clean up old cache entries
-          cleanupCache();
-        } catch (error) {
-          console.warn('Failed to store in IndexedDB:', error);
-        }
-      }
-
-      setLoadedVideos(prev => ({ ...prev, [videoId]: true }));
-      setLoadingVideos(prev => ({ ...prev, [videoId]: false }));
+      videoElement.onerror = () => {
+        setLoadingVideos(prev => ({ ...prev, [videoId]: false }));
+      };
 
     } catch (error) {
       console.error('Failed to preload video:', error);
       setLoadingVideos(prev => ({ ...prev, [videoId]: false }));
     }
-  }, [videos, loadingVideos]);
-
-  const cleanupCache = useCallback(async () => {
-    if (!('indexedDB' in window)) return;
-
-    try {
-      const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open(CACHE_NAME, 1);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-      });
-
-      const transaction = db.transaction(['videos'], 'readwrite');
-      const store = transaction.objectStore('videos');
-      const index = transaction.objectStore('videos').index('timestamp');
-
-      // Remove expired entries
-      const cutoff = Date.now() - CACHE_DURATION;
-      const expiredRequest = index.openCursor(IDBKeyRange.upperBound(cutoff));
-
-      expiredRequest.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest).result;
-        if (cursor) {
-          store.delete(cursor.primaryKey);
-          cursor.continue();
-        }
-      };
-
-      // Check total cache size
-      const getAllRequest = store.getAll();
-      getAllRequest.onsuccess = () => {
-        let totalSize = 0;
-        const entries = getAllRequest.result;
-
-        entries.forEach(entry => {
-          totalSize += entry.size || 0;
-        });
-
-        // If cache is too large, remove oldest entries
-        if (totalSize > CACHE_SIZE_LIMIT) {
-          entries.sort((a, b) => a.timestamp - b.timestamp);
-
-          for (const entry of entries) {
-            if (totalSize <= CACHE_SIZE_LIMIT) break;
-            store.delete(entry.id);
-            totalSize -= entry.size || 0;
-            delete cacheRef.current[entry.id];
-          }
-        }
-      };
-    } catch (error) {
-      console.warn('Failed to cleanup cache:', error);
-    }
-  }, []);
+  }, [videos, loadingVideos, loadedVideos]);
 
   // Preload nearby videos
   const preloadNearbyVideos = useCallback((currentIndex: number) => {
@@ -233,11 +95,11 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
 
     for (let i = startIndex; i <= endIndex; i++) {
       const videoId = videos[i]?.id || `video-${i}`;
-      if (!cacheRef.current[videoId] && !loadingVideos[videoId]) {
+      if (!loadedVideos[videoId] && !loadingVideos[videoId]) {
         preloadVideo(videoId);
       }
     }
-  }, [videos, loadingVideos, preloadVideo]);
+  }, [videos, loadingVideos, loadedVideos, preloadVideo]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -260,7 +122,7 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
 
         // Set loading state for new video
         const newVideoId = videos[newIndex]?.id || `video-${newIndex}`;
-        if (!loadedVideos[newVideoId] && !cacheRef.current[newVideoId]) {
+        if (!loadedVideos[newVideoId]) {
           setLoadingVideos(prev => ({ ...prev, [newVideoId]: true }));
           preloadVideo(newVideoId);
         }
@@ -295,7 +157,7 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
         videoElement.pause();
       } else {
         const videoId = currentVideo?.id || `video-${currentVideoIndex}`;
-        if (!loadedVideos[videoId] && !cacheRef.current[videoId]) {
+        if (!loadedVideos[videoId]) {
           setLoadingVideos(prev => ({ ...prev, [videoId]: true }));
           preloadVideo(videoId);
         }
@@ -335,6 +197,70 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
     if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
     if (diffDays < 365) return `${Math.ceil(diffDays / 30)} months ago`;
     return `${Math.ceil(diffDays / 365)} years ago`;
+  };
+
+  const openComments = async (video: Video) => {
+    setCurrentVideoForComments(video);
+    setShowComments(true);
+    setNewComment('');
+    // Load comments when opening the panel
+    await loadComments(video.id || `video-${videos.indexOf(video)}`);
+  };
+
+  const loadComments = async (videoId: string) => {
+    setIsCommentsLoading(true);
+    try {
+      const commentsData = await commentService.getVideoComments(videoId, { limit: 50 });
+      setComments(commentsData);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      setComments([]);
+    } finally {
+      setIsCommentsLoading(false);
+    }
+  };
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || !currentVideoForComments) return;
+
+    const videoId = currentVideoForComments.id || `video-${videos.indexOf(currentVideoForComments)}`;
+    setIsSubmittingComment(true);
+
+    try {
+      const comment = await commentService.addComment(videoId, { content: newComment.trim() });
+      setComments(prev => [...prev, comment]);
+      setNewComment('');
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    } finally {
+      setIsSubmittingComment(false);
+      //add 1 to the comment count
+      const video = videos.find(v => v.id === videoId);
+      if (video) {
+        video.commentCount = (video.commentCount || 0) + 1;
+      }
+
+    }
+  };
+
+  const formatCommentDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const closeComments = () => {
+    setShowComments(false);
+    setCurrentVideoForComments(null);
   };
 
   if (videos.length === 0) {
@@ -378,9 +304,8 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
         {videos.map((video, index) => {
           const videoId = video.id || `video-${index}`;
           const isLoading = loadingVideos[videoId];
-          const isLoaded = loadedVideos[videoId] || cacheRef.current[videoId];
+          const isLoaded = loadedVideos[videoId];
           const isCurrentVideo = index === currentVideoIndex;
-          const cachedVideo = cacheRef.current[videoId];
 
           return (
             <div
@@ -392,7 +317,7 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
                 {video.videoUrl ? (
                   <video
                     ref={(el) => (videoRefs.current[videoId] = el)}
-                    src={cachedVideo?.url || video.videoUrl}
+                    src={video.videoUrl}
                     poster={video.thumbnailUrl || undefined}
                     className="w-full h-full object-cover"
                     autoPlay={isCurrentVideo}
@@ -528,20 +453,19 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
                       <Heart className={`h-5 w-5 sm:h-6 sm:w-6 ${liked[videoId] ? 'fill-current' : ''}`} />
                     </Button>
                     <span className="text-white text-xs">
-                      {Math.floor((video.views || 0) * 0.1) + (liked[videoId] ? 1 : 0)}
+                      {video.likeCount}
                     </span>
 
-                    <Link to={`/video/${videoId}`}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full h-10 w-10 sm:h-12 sm:w-12 bg-white/20 text-white hover:bg-white/30"
-                      >
-                        <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
-                      </Button>
-                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full h-10 w-10 sm:h-12 sm:w-12 bg-white/20 text-white hover:bg-white/30"
+                      onClick={() => openComments(video)}
+                    >
+                      <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </Button>
                     <span className="text-white text-xs">
-                      {Math.floor((video.views || 0) * 0.05)}
+                      {video.commentCount}
                     </span>
 
                     <Button
@@ -577,6 +501,115 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
           );
         })}
       </div>
+
+      {/* Comments Panel */}
+      {showComments && currentVideoForComments && (
+        <div className="fixed inset-0 z-[9998] bg-black/50">
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl transform transition-transform duration-300 ease-out flex flex-col"
+            style={{
+              height: '70vh',
+              transform: showComments ? 'translateY(0)' : 'translateY(100%)'
+            }}
+          >
+            {/* Comments Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-1 h-8 bg-gray-300 rounded-full"></div>
+                <span className="text-lg font-semibold">
+                  Comments ({comments.length})
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full h-8 w-8"
+                onClick={closeComments}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Comments Content - Now properly scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 min-h-0">
+              {isCommentsLoading ? (
+                // Loading skeleton
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex space-x-3">
+                      <div className="w-8 h-8 bg-gray-300 rounded-full flex-shrink-0"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-300 rounded w-24 mb-2"></div>
+                        <div className="h-3 bg-gray-300 rounded w-full"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : comments.length > 0 ? (
+                // Real comments from API
+                <div className="space-y-4">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="flex space-x-3">
+                      <div className="w-8 h-8 bg-gray-300 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium text-gray-600">
+                        {comment.user?.username?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-sm">{comment.user?.username || 'Unknown'}</span>
+                          <span className="text-gray-500 text-xs">
+                            {formatCommentDate(comment.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-sm mt-1">{comment.content}</p>
+                        <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                          <button className="flex items-center space-x-1 hover:text-red-500">
+                            <Heart className="h-3 w-3" />
+                            <span>0</span>
+                          </button>
+                          <button className="hover:text-blue-500">Reply</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // No comments message
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No comments yet. Be the first to comment!</p>
+                </div>
+              )}
+            </div>
+
+            {/* Comment Input */}
+            <div className="border-t border-gray-200 p-4 flex-shrink-0">
+              <form onSubmit={handleSubmitComment}>
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gray-300 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium text-gray-600">
+                    U
+                  </div>
+                  <div className="flex-1 bg-gray-100 rounded-full px-4 py-2">
+                    <input
+                      type="text"
+                      placeholder="Add a comment..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      className="w-full bg-transparent outline-none text-sm"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    className="text-blue-500 font-semibold text-sm px-4 py-2"
+                    disabled={!newComment.trim() || isSubmittingComment}
+                  >
+                    {isSubmittingComment ? 'Posting...' : 'Post'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
