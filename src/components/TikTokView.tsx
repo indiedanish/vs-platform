@@ -9,6 +9,7 @@ import { commentService } from '../services';
 interface TikTokViewProps {
   videos: Video[];
   onBackToGrid?: () => void;
+  onVideoUpdate?: (videoId: string, updates: Partial<Video>) => void; // Add this prop
 }
 
 const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
@@ -171,10 +172,26 @@ const TikTokView: React.FC<TikTokViewProps> = ({ videos, onBackToGrid }) => {
   };
 
   const toggleLike = (videoId: string) => {
+    const wasLiked = liked[videoId];
+
     setLiked(prev => ({
       ...prev,
       [videoId]: !prev[videoId]
     }));
+
+    // Update the like count directly in the videos array
+    const videoIndex = videos.findIndex(v => (v.id || `video-${videos.indexOf(v)}`) === videoId);
+    if (videoIndex !== -1) {
+      if (wasLiked) {
+        // If currently liked, decrease count by 1
+        videos[videoIndex].likeCount = Math.max(0, (videos[videoIndex].likeCount || 0) - 1);
+      } else {
+        // If not currently liked, increase count by 1
+        videos[videoIndex].likeCount = (videos[videoIndex].likeCount || 0) + 1;
+      }
+      // Force a re-render by updating state
+      setCurrentVideoIndex(currentVideoIndex);
+    }
   };
 
   const formatViews = (views: number): string => {
