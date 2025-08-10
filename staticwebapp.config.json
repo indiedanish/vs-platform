@@ -1,0 +1,25 @@
+{
+    "routes": [
+        {
+            "route": "/*",
+            "serve": "/index.html",
+            "statusCode": 200
+        }
+    ],
+    "navigationFallback": {
+        "rewrite": "/index.html",
+        "exclude": [
+            "/images/*",
+            "/css/*",
+            "/js/*",
+            "/api/*",
+            "/_framework/*"
+        ]
+    },
+    "platformErrorOverrides": [
+        {
+            "errorType": "NotFound",
+            "serve": "/index.html"
+        }
+    ]
+}

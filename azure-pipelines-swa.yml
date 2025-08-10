@@ -1,8 +1,4 @@
-# Node.js with React
-# Build a Node.js project that uses React.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
-
+# Azure Static Web Apps deployment pipeline
 trigger:
 - main
 
@@ -41,4 +37,4 @@ stages:
         output_location: 'dist'
         skip_app_build: true
         deployment_token: $(azureStaticWebAppsToken)
-      displayName: 'Deploy to Azure Static Web App'
+      displayName: 'Deploy to Azure Static Web App' 
