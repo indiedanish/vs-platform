@@ -1,0 +1,1 @@
+import{j as e}from"./index-DJZj13a9.js";const a=()=>e.jsx("div",{className:"min-h-screen flex items-center justify-center",children:e.jsxs("div",{className:"text-center",children:[e.jsx("h1",{className:"text-2xl font-bold mb-4",children:"Creator Dashboard"}),e.jsx("p",{children:"This is a creator-only page for managing videos and analytics."})]})});export{a as default};

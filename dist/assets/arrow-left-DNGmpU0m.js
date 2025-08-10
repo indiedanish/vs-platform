@@ -1,0 +1,6 @@
+import{b as t,c as a}from"./index-DJZj13a9.js";class c{async getVideos(r={}){try{const e={};return r.page&&(e.page=r.page.toString()),r.limit&&(e.limit=r.limit.toString()),r.sortBy&&(e.sortBy=r.sortBy),r.sortOrder&&(e.sortOrder=r.sortOrder),r.search&&(e.search=r.search),r.creatorId&&(e.creatorId=r.creatorId),await t.get("/videos",e)}catch(e){throw console.error("Get videos error:",e),e}}async createVideo(r){try{return await t.post("/videos",r)}catch(e){throw console.error("Create video error:",e),e}}async getVideoById(r){try{return await t.get(`/videos/${r}`)}catch(e){throw console.error("Get video by ID error:",e),e}}async searchVideos(r,e={}){try{return await this.getVideos({...e,search:r})}catch(o){throw console.error("Search videos error:",o),o}}async getVideosByCreator(r,e={}){try{return await this.getVideos({...e,creatorId:r})}catch(o){throw console.error("Get videos by creator error:",o),o}}}const n=new c;/**
+ * @license lucide-react v0.536.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const s=[["path",{d:"m12 19-7-7 7-7",key:"1l729n"}],["path",{d:"M19 12H5",key:"x3x0zl"}]],h=a("arrow-left",s);export{h as A,n as v};

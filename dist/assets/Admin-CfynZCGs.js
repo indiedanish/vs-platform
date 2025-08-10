@@ -1,0 +1,1 @@
+import{j as e}from"./index-DJZj13a9.js";const n=()=>e.jsx("div",{className:"min-h-screen flex items-center justify-center",children:e.jsxs("div",{className:"text-center",children:[e.jsx("h1",{className:"text-2xl font-bold mb-4",children:"Admin Dashboard"}),e.jsx("p",{children:"This is an admin-only page."})]})});export{n as default};
